@@ -1,0 +1,81 @@
+## Place your answers here.
+
+
+
+Exercise 1: Study the web server's C code (in zookd.c and http.c), and find one example of code that
+allows an attacker to overwrite the return address of a function. 
+
+
+zookd.c:process_client
+    char reqpath[4096];
+reqpath may be overflow when calling url_decode, which put request path into reqpath without any bounds checking
+
+
+
+
+
+
+Exercise 2: Write an exploit that uses a buffer overflow to crash the web server (or one of the processes
+it creates).
+
+We overflow reqpath by send a very long request path:
+
+    bad_string = "/"+4500*"A"
+    bad_string_byte = urllib.parse.quote(bad_string,encoding='ascii').encode('ascii')
+    req =   b"GET "+bad_string_byte+b" HTTP/1.0\r\n" + \
+            b"\r\n"
+
+Server will receive this request and one child process that takes over the request will crash because of overflow in reqpath.
+
+
+
+
+
+
+
+Exercise 3: Starting from one of your exploits from Exercise 2, construct an exploit that hijacks the
+control flow of the web server and unlinks /home/student/grades.txt. Save this exploit in a file
+called exploit-3.py.
+
+We modified shellcode.S: syscall unlink
+Overflow in reqpath will modify the return address to the first instruction in shellcode.S, which located at the beginning of the reqpath
+
+
+
+
+
+Exercise 4: Starting from your exploit in Exercise 2 and 3, construct an exploit that unlinks
+/home/student/grades.txt when run on the binaries that have a non-executable stack. Name this new
+exploit exploit-4.py.
+
+We modified the stack and let the conflow flow first jump to accidentally, then to unlink in libc.
+
+
+
+
+Exercise 5: Look through the source code and try to find more vulnerabilities that can allow an attacker
+to compromise the security of the web server. Describe the attacks you have found in answers.txt,
+along with an explanation of the limitations of the attack, what an attacker can accomplish, why it
+works, and how you might go about fixing or preventing it.
+
+1.
+zookd.c:process_client
+    char reqpath[4096];
+reqpath may be overflow when calling url_decode, which put request path into reqpath without any boundary check
+
+
+2.
+http.c:http_request_headers
+    char value[512];
+value may be overflow when calling url_decode, which put header's value into value without any boundary check
+
+Limitations: It depends on the convetion of the c calling and the stupid "ret" instruction.
+The attacker can use overflow to hijack the control of flow.
+ASLR and stack canary can prevent it.
+For this lab1, we can just add some boundary checks.
+
+
+Exercise 6: . For each buffer overflow vulnerability you have exploited in Exercises 2, 3, and 4, fix the
+web server's code to prevent the vulnerability in the first place. 
+
+We will fix overflow in reqpath.
